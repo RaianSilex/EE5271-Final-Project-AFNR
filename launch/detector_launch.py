@@ -1,7 +1,5 @@
 from launch import LaunchDescription
 from launch_ros.actions import Node
-import os
-
 
 def generate_launch_description():
     return LaunchDescription([
@@ -13,7 +11,6 @@ def generate_launch_description():
             name='underwater_detector',
             output='screen',
             parameters=[{
-                'weights':    os.path.join(os.path.dirname(__file__), '..', 'underwater_detector', 'models', 'best.onnx'),
                 'imgsz':      640,
                 'conf_thres': 0.25,
                 'iou_thres':  0.45,

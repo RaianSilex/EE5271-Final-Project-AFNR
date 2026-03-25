@@ -1,6 +1,3 @@
-# Model weights (too large for git — distribute separately or use git-lfs)
-underwater_detector/models/
-
 # Python
 __pycache__/
 *.py[cod]

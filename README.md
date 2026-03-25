@@ -8,7 +8,7 @@ A ROS2 package for real-time underwater object detection using a YOLOv9 model ex
 
 - **Ubuntu 22.04**
 - **ROS2 Humble** — [install guide](https://docs.ros.org/en/humble/Installation.html)
-- **`best.onnx`** — the trained model weights (obtain separately and place at `underwater_detector/models/best.onnx`)
+- **Git LFS** — required to download the model weights on clone (`sudo apt-get install git-lfs && git lfs install`)
 
 ---
 
@@ -32,14 +32,18 @@ sudo apt install ros-humble-cv-bridge ros-humble-vision-opencv
 
 ## Installation
 
+The model weights (`best.onnx`) are stored in this repo using **Git LFS** (Large File Storage). You need to install it once before cloning, otherwise you'll get a small placeholder file instead of the real model.
+
 ```bash
-# Clone the repo into a ROS2 workspace
+# Install Git LFS (one-time setup)
+sudo apt-get install git-lfs
+git lfs install
+```
+
+```bash
+# Clone the repo — the model will download automatically
 mkdir -p ~/ros2_ws/src && cd ~/ros2_ws/src
 git clone https://github.com/RaianSilex/underwater_detector.git
-
-# Place the model weights
-mkdir -p underwater_detector/underwater_detector/models
-cp /path/to/best.onnx underwater_detector/underwater_detector/models/best.onnx
 
 # Build
 cd ~/ros2_ws
