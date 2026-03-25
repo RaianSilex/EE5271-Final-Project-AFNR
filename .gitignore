@@ -1,0 +1,13 @@
+# Model weights (too large for git — distribute separately or use git-lfs)
+underwater_detector/models/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+
+# ROS2 build artifacts (run colcon build from the workspace, not here)
+build/
+install/
+log/
