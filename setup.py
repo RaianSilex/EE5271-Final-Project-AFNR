@@ -27,6 +27,7 @@ setup(
         'console_scripts': [
             'detector_node     = underwater_detector.detector_node:main',
             'loco_pose_node    = underwater_detector.loco_pose_node:main',
+            'target_pose_node  = underwater_detector.target_pose_node:main',
         ],
     },
 )

@@ -59,4 +59,33 @@ def generate_launch_description():
                 'marker2_offset': [0.0,   0.0,  0.10],
             }],
         ),
+        # ── Target object ArUco pose estimator ───────────────────────────
+        # Scans the full frame for ArUco marker ID 3 (affixed to target object).
+        # Subscribes to:
+        #   /zed/zed_node/left/image_rect_color     (raw ZED image)
+        #   /zed/zed_node/left/camera_info          (ZED intrinsics)
+        # Publishes:
+        #   /target/pose        geometry_msgs/PoseStamped  (6-DOF target pose in camera frame)
+        #   /target/pose_image  sensor_msgs/Image          (visualisation with axes drawn)
+        Node(
+            package='underwater_detector',
+            executable='target_pose_node',
+            name='target_pose_estimator',
+            output='screen',
+            parameters=[{
+                # ArUco ID affixed to the target object (must not clash with IDs 0-2 on LoCo).
+                'marker_id': 3,
+
+                # Must match the dictionary used for all markers in the scene.
+                'aruco_dict_id': 0,
+
+                # Physical side length of the printed marker square (metres).
+                'marker_size': 0.10,
+
+                # Optional rotation (intrinsic XYZ Euler, degrees) from the raw marker
+                # frame to your desired target body frame.  Leave as zeros to publish
+                # the marker face frame directly.
+                'marker_to_target_rpy_deg': [0.0, 0.0, 0.0],
+            }],
+        ),
     ])

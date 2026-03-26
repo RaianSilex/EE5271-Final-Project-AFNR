@@ -1,6 +1,6 @@
 # underwater_detector
 
-A ROS2 package for real-time underwater object detection using a YOLOv9 model exported to ONNX, with ArUco-based 6-DOF pose estimation for the LoCo AUV.
+A ROS2 package for real-time underwater object detection using a YOLOv9 model exported to ONNX, with ArUco-based 6-DOF pose estimation for the LoCo AUV and arbitrary target objects.
 
 ---
 
@@ -55,29 +55,50 @@ source install/setup.bash
 
 ## Usage
 
-### Launch everything (detector + pose estimator)
+### Launch everything (detector + all pose estimators)
 
 ```bash
 ros2 launch underwater_detector detector_launch.py
 ```
 
-### Run the detector node only
+### Run nodes individually
 
 ```bash
 ros2 run underwater_detector detector_node
+ros2 run underwater_detector loco_pose_node
+ros2 run underwater_detector target_pose_node
 ```
 
 ---
 
 ## Topics
 
+### detector_node
+
 | Direction | Topic | Type | Description |
 |-----------|-------|------|-------------|
 | Subscribes | `/zed/zed_node/left/image_rect_color` | `sensor_msgs/Image` | Input feed from ZED camera |
 | Publishes | `/detections/image` | `sensor_msgs/Image` | Annotated image with bounding boxes |
 | Publishes | `/detections/json` | `std_msgs/String` | JSON array of detections |
-| Publishes | `/loco/pose` | `geometry_msgs/PoseStamped` | 6-DOF LoCo pose in camera frame |
+
+### loco_pose_node
+
+| Direction | Topic | Type | Description |
+|-----------|-------|------|-------------|
+| Subscribes | `/zed/zed_node/left/image_rect_color` | `sensor_msgs/Image` | ZED rectified image |
+| Subscribes | `/zed/zed_node/left/camera_info` | `sensor_msgs/CameraInfo` | ZED intrinsics |
+| Subscribes | `/detections/json` | `std_msgs/String` | YOLO detections (used to crop ROI) |
+| Publishes | `/loco/pose` | `geometry_msgs/PoseStamped` | 6-DOF LoCo body pose in camera frame |
 | Publishes | `/loco/pose_image` | `sensor_msgs/Image` | Pose visualisation with axes drawn |
+
+### target_pose_node
+
+| Direction | Topic | Type | Description |
+|-----------|-------|------|-------------|
+| Subscribes | `/zed/zed_node/left/image_rect_color` | `sensor_msgs/Image` | ZED rectified image |
+| Subscribes | `/zed/zed_node/left/camera_info` | `sensor_msgs/CameraInfo` | ZED intrinsics |
+| Publishes | `/target/pose` | `geometry_msgs/PoseStamped` | 6-DOF target pose in camera frame |
+| Publishes | `/target/pose_image` | `sensor_msgs/Image` | Pose visualisation with axes drawn |
 
 ---
 
@@ -103,6 +124,15 @@ ros2 run underwater_detector detector_node
 | `marker0_offset` | `[0.0, -0.15, 0.0]` | Marker ID 0 position in body frame (m) |
 | `marker1_offset` | `[0.20, 0.0, 0.0]` | Marker ID 1 position in body frame (m) |
 | `marker2_offset` | `[0.0, 0.0, 0.10]` | Marker ID 2 position in body frame (m) |
+
+### target_pose_node
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `marker_id` | `3` | ArUco ID affixed to the target object |
+| `aruco_dict_id` | `0` | ArUco dictionary (`0` = DICT_4X4_50) |
+| `marker_size` | `0.10` | Printed marker side length in metres |
+| `marker_to_target_rpy_deg` | `[0.0, 0.0, 0.0]` | Intrinsic XYZ Euler (deg) rotating marker frame to target body frame |
 
 ---
 
@@ -132,8 +162,11 @@ And make sure `onnxruntime-gpu` is installed instead of `onnxruntime`.
 
 Printable marker PDFs (DICT_4X4_50) are in [`aruco_markers/`](aruco_markers/).
 
-- `ID0.pdf` — starboard side
-- `ID1.pdf` — nose / front
-- `ID2.pdf` — top
+- `ID0.pdf` — LoCo starboard side
+- `ID1.pdf` — LoCo nose / front
+- `ID2.pdf` — LoCo top
+- `ID3.pdf` — target object (any scene object you want to track)
 
 Measure the printed marker size (black border edge to edge) and update `marker_size` in the launch file accordingly.
+
+> All four markers use the same dictionary (`DICT_4X4_50`).  IDs 0–2 are reserved for LoCo; ID 3 is reserved for the target object.  Do not reuse IDs across objects in the same scene.
