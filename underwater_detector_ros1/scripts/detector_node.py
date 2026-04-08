@@ -6,8 +6,7 @@ import numpy as np
 import cv2
 import onnxruntime as ort
 
-import rclpy
-from rclpy.node import Node
+import rospy
 from sensor_msgs.msg import Image
 from std_msgs.msg import String
 from cv_bridge import CvBridge
@@ -19,7 +18,8 @@ CLASS_NAMES = [
     'Screwdriver', 'Car', 'Tripod', 'ROV', 'Knife', 'Dive Weight'
 ]
 
-DEFAULT_MODEL = os.path.join(os.path.dirname(__file__), 'models', 'best.onnx')
+DEFAULT_MODEL = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                             '..', 'models', 'best.onnx')
 
 
 def nms(boxes, scores, iou_threshold):
@@ -41,40 +41,36 @@ def nms(boxes, scores, iou_threshold):
     return keep
 
 
-class UnderwaterDetector(Node):
+class UnderwaterDetector(object):
     def __init__(self):
-        super().__init__('underwater_detector')
+        rospy.init_node('underwater_detector')
 
-        self.declare_parameter('weights',    DEFAULT_MODEL)
-        self.declare_parameter('imgsz',      640)
-        self.declare_parameter('conf_thres', 0.25)
-        self.declare_parameter('iou_thres',  0.45)
-        self.declare_parameter('device',     'cpu')
-
-        weights       = self.get_parameter('weights').value
-        imgsz         = self.get_parameter('imgsz').value
-        self.conf_thr = self.get_parameter('conf_thres').value
-        self.iou_thr  = self.get_parameter('iou_thres').value
-        device        = self.get_parameter('device').value
+        weights       = rospy.get_param('~weights',    DEFAULT_MODEL)
+        imgsz         = rospy.get_param('~imgsz',      640)
+        self.conf_thr = rospy.get_param('~conf_thres', 0.25)
+        self.iou_thr  = rospy.get_param('~iou_thres',  0.45)
+        device        = rospy.get_param('~device',     'cpu')
 
         self.imgsz  = (imgsz, imgsz)
         self.bridge = CvBridge()
 
-        providers = ['CUDAExecutionProvider', 'CPUExecutionProvider'] if device == 'cuda' else ['CPUExecutionProvider']
+        providers = (['CUDAExecutionProvider', 'CPUExecutionProvider']
+                     if device == 'cuda' else ['CPUExecutionProvider'])
         self.session = ort.InferenceSession(weights, providers=providers)
         self.input_name = self.session.get_inputs()[0].name
-        self.get_logger().info(f"Model loaded | providers={self.session.get_providers()}")
+        rospy.loginfo("Model loaded | providers=%s", self.session.get_providers())
 
-        self.pub_img  = self.create_publisher(Image,  '/detections/image', 10)
-        self.pub_json = self.create_publisher(String, '/detections/json',  10)
+        self.pub_img  = rospy.Publisher('/detections/image', Image, queue_size=10)
+        self.pub_json = rospy.Publisher('/detections/json',  String, queue_size=10)
 
-        self.create_subscription(
-            Image, '/zedm/zed_node/left_raw/image_raw_color', self.image_callback, 10)
-        self.get_logger().info("Waiting for images on /zedm/zed_node/left_raw/image_raw_color ...")
+        rospy.Subscriber('/zedm/zed_node/left_raw/image_raw_color',
+                         Image, self.image_callback, queue_size=1,
+                         buff_size=2**24)
+        rospy.loginfo("Waiting for images on /zedm/zed_node/left_raw/image_raw_color ...")
 
     def preprocess(self, img_bgr):
         img = cv2.resize(img_bgr, self.imgsz)
-        img = img[:, :, ::-1].transpose(2, 0, 1)          # BGR→RGB, HWC→CHW
+        img = img[:, :, ::-1].transpose(2, 0, 1)          # BGR->RGB, HWC->CHW
         img = np.ascontiguousarray(img, dtype=np.float32) / 255.0
         return img[np.newaxis]                              # (1, 3, H, W)
 
@@ -82,14 +78,14 @@ class UnderwaterDetector(Node):
         try:
             frame = self.bridge.imgmsg_to_cv2(msg, 'bgr8')
         except Exception as e:
-            self.get_logger().error(f"cv_bridge error: {e}")
+            rospy.logerr("cv_bridge error: %s", e)
             return
 
         orig_h, orig_w = frame.shape[:2]
         tensor = self.preprocess(frame)
 
         outputs = self.session.run(None, {self.input_name: tensor})
-        # output shape: (1, 28, 8400)  → 28 = 4 (cx,cy,w,h) + 24 classes
+        # output shape: (1, 28, 8400) -> 28 = 4 (cx,cy,w,h) + 24 classes
         pred = outputs[0][0].T   # (8400, 28)
 
         cx, cy, w, h = pred[:, 0], pred[:, 1], pred[:, 2], pred[:, 3]
@@ -124,7 +120,7 @@ class UnderwaterDetector(Node):
                 'bbox':       [bx1, by1, bx2, by2]
             })
             cv2.rectangle(frame, (bx1, by1), (bx2, by2), (0, 255, 100), 2)
-            cv2.putText(frame, f"{label} {score:.2f}",
+            cv2.putText(frame, "%s %.2f" % (label, score),
                         (bx1, by1 - 8), cv2.FONT_HERSHEY_SIMPLEX,
                         0.6, (0, 255, 100), 2)
 
@@ -134,16 +130,13 @@ class UnderwaterDetector(Node):
         self.pub_json.publish(out)
 
         if detections:
-            self.get_logger().info(
-                f"Detected {len(detections)}: {[d['label'] for d in detections]}")
+            rospy.loginfo("Detected %d: %s", len(detections),
+                          [d['label'] for d in detections])
 
 
-def main(args=None):
-    rclpy.init(args=args)
+def main():
     node = UnderwaterDetector()
-    rclpy.spin(node)
-    node.destroy_node()
-    rclpy.shutdown()
+    rospy.spin()
 
 
 if __name__ == '__main__':

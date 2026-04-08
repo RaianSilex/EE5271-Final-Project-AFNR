@@ -1,0 +1,48 @@
+<launch>
+
+  <!-- ── YOLO detector ───────────────────────────────────────────────── -->
+  <node pkg="underwater_detector" type="detector_node.py"
+        name="underwater_detector" output="screen">
+    <param name="imgsz"      value="640" />
+    <param name="conf_thres" value="0.25" />
+    <param name="iou_thres"  value="0.45" />
+    <param name="device"     value="cpu" />
+    <!-- change device to "cuda" if GPU available -->
+  </node>
+
+  <!-- ── LoCo ArUco pose estimator ───────────────────────────────────── -->
+  <node pkg="underwater_detector" type="loco_pose_node.py"
+        name="loco_pose_estimator" output="screen">
+    <param name="aruco_dict_id"  value="0" />
+    <param name="marker_size"    value="0.10" />
+    <param name="conf_threshold" value="0.30" />
+    <rosparam param="marker0_offset">[0.0, -0.15, 0.0]</rosparam>
+    <rosparam param="marker1_offset">[0.20,  0.0,  0.0]</rosparam>
+    <rosparam param="marker2_offset">[0.0,   0.0,  0.10]</rosparam>
+  </node>
+
+  <!-- ── Target object ArUco pose estimator ──────────────────────────── -->
+  <node pkg="underwater_detector" type="target_pose_node.py"
+        name="target_pose_estimator" output="screen">
+    <param name="marker_id"      value="3" />
+    <param name="aruco_dict_id"  value="0" />
+    <param name="marker_size"    value="0.10" />
+    <rosparam param="marker_to_target_rpy_deg">[0.0, 0.0, 0.0]</rosparam>
+  </node>
+
+  <!-- ── Navigation controller ───────────────────────────────────────── -->
+  <!-- Subscribes to /loco/pose and /targets/poses, publishes
+       loco_pilot/Command on /loco/command to drive LoCo to the target -->
+  <node pkg="underwater_detector" type="navigate_node.py"
+        name="loco_navigator" output="screen">
+    <param name="kp_yaw"        value="0.8" />
+    <param name="kp_pitch"      value="0.8" />
+    <param name="kp_throttle"   value="0.5" />
+    <param name="max_yaw"       value="0.4" />
+    <param name="max_pitch"     value="0.4" />
+    <param name="max_throttle"  value="0.4" />
+    <param name="goal_distance" value="0.30" />
+    <param name="control_rate"  value="10.0" />
+  </node>
+
+</launch>

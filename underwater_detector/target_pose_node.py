@@ -92,13 +92,13 @@ class TargetPoseEstimator(Node):
 
         # ── Subscriptions ─────────────────────────────────────────────────
         self.create_subscription(
-            CameraInfo, '/zed/zed_node/left/camera_info',
+            CameraInfo, '/zedm/zed_node/left_raw/camera_info',
             self._camera_info_cb, 1)
         self.create_subscription(
             String, '/detections/json',
             self._detections_cb, 10)
         self.create_subscription(
-            Image, '/zed/zed_node/left/image_rect_color',
+            Image, '/zedm/zed_node/left_raw/image_raw_color',
             self._image_cb, 10)
 
         # ── Publishers ────────────────────────────────────────────────────
